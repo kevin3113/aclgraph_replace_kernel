@@ -4,10 +4,16 @@
 #include <cstring>
 #include <vector>
 
-extern "C" __global__ __aicore__ void add_replace_fp16_same_params(GM_ADDR x1, GM_ADDR x2, GM_ADDR y)
+struct AddReplaceArgs {
+    GM_ADDR x1;
+    GM_ADDR x2;
+    GM_ADDR y;
+};
+
+__aicore__ inline void add_replace_body(GM_ADDR x1, GM_ADDR x2, GM_ADDR y, uint32_t block_idx)
 {
     constexpr uint32_t n = 128;
-    uint32_t off = AscendC::GetBlockIdx() * n;
+    uint32_t off = block_idx * n;
     AscendC::TPipe p;
     AscendC::TQue<AscendC::QuePosition::VECIN, 1> q1, q2;
     AscendC::TQue<AscendC::QuePosition::VECOUT, 1> qo;
@@ -22,6 +28,20 @@ extern "C" __global__ __aicore__ void add_replace_fp16_same_params(GM_ADDR x1, G
     AscendC::Add(o, a, b, n); qo.EnQue(o); q1.FreeTensor(a); q2.FreeTensor(b);
     o = qo.DeQue<half>(); AscendC::DataCopy(go, o, n); qo.FreeTensor(o);
 }
+
+extern "C" __global__ __vector__ __aicore__ void add_replace_fp16_same_params(
+    GM_ADDR x1, GM_ADDR x2, GM_ADDR y)
+{
+    add_replace_body(x1, x2, y, AscendC::GetBlockIdx());
+}
+
+__sk__ __vector__ void add_replace_fp16_same_params_sk(
+    const AddReplaceArgs *args, sk::SkSystemArgs *sys_args)
+{
+    add_replace_body(args->x1, args->x2, args->y, sys_args->SkGetBlockIdx());
+}
+
+SK_BIND(add_replace_fp16_same_params, 4, add_replace_fp16_same_params_sk);
 namespace {
 constexpr size_t kBytes = 3 * sizeof(void *);
 thread_local int gLastError = ACL_SUCCESS;

@@ -62,6 +62,7 @@ def main():
         check(replace(model, None, ctypes.byref(replaced)), "Add replacement")
         if replaced.value != 1:
             raise RuntimeError(f"Expected one Add task, replaced {replaced.value}")
+        graph.super_kernel_optimize()
         print("PASS: Add replacement committed")
         for index in range(3):
             current_x1 = host_x1 + index / 2

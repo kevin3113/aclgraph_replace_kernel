@@ -11,7 +11,7 @@ aclError add_replace_fp16(aclmdlRI modelRI, const char *exactName,
 
 函数遍历所有 Kernel。`exactName=NULL` 匹配 `Add_` 前缀，否则精确匹配。只修改 `funcHandle`、`numBlocks=24`，保留其他参数；`taskGrp` 按 Runtime 要求设为 `NULL`，提交更新。
 
-Kernel `add_replace_fp16_same_params` 计算 `y=x1+x2`。输入输出须为连续 `[24,1,128]`、float16；每 block 处理 128 个元素。当前不解析原始 Kernel 的 tilingdata，仅编写特化 Kernel；Shape 或数据类型变化后需要重新匹配 Kernel。
+Kernel `add_replace_fp16_same_params` 计算 `y=x1+x2`。输入输出须为连续 `[24,1,128]`、float16；每 block 处理 128 个元素。当前不解析原始 Kernel 的 tilingdata，仅编写特化 Kernel；Shape 或数据类型变化后需重新匹配。另提供 `__sk__` 入口并用 `SK_BIND` 绑定普通入口。
 
 调用须在 capture 结束且无并发访问时进行。
 
@@ -30,4 +30,4 @@ python add_replace_minimal/test_add.py \
   --library build-add/libadd_replace.so --device 0
 ```
 
-测试校验三轮 replay 的 3072 个元素；910c 已通过。
+测试替换后调用 `graph.super_kernel_optimize()`，再校验三轮 replay 的 3072 个元素；910c 已通过。
