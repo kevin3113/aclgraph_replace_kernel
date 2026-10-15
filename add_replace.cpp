@@ -10,7 +10,9 @@ struct AddReplaceArgs {
     GM_ADDR y;
 };
 
-__aicore__ inline void add_replace_body(GM_ADDR x1, GM_ADDR x2, GM_ADDR y, uint32_t block_idx)
+template <bool IsSk>
+__aicore__ inline void add_replace_body(
+    GM_ADDR x1, GM_ADDR x2, GM_ADDR y, uint32_t block_idx)
 {
     constexpr uint32_t n = 128;
     uint32_t off = block_idx * n;
@@ -27,20 +29,22 @@ __aicore__ inline void add_replace_body(GM_ADDR x1, GM_ADDR x2, GM_ADDR y, uint3
     a = q1.DeQue<half>(); b = q2.DeQue<half>(); auto o = qo.AllocTensor<half>();
     AscendC::Add(o, a, b, n); qo.EnQue(o); q1.FreeTensor(a); q2.FreeTensor(b);
     o = qo.DeQue<half>(); AscendC::DataCopy(go, o, n); qo.FreeTensor(o);
-    p.DestroyWithoutPipeAll();
+    if constexpr (IsSk) {
+        p.DestroyWithoutPipeAll();
+    }
 }
 
 extern "C" __global__ __vector__ __aicore__ void add_replace_fp16_same_params(
     GM_ADDR x1, GM_ADDR x2, GM_ADDR y)
 {
-    add_replace_body(x1, x2, y, AscendC::GetBlockIdx());
+    add_replace_body<false>(x1, x2, y, AscendC::GetBlockIdx());
 }
 
 template <uint32_t split_num>
 __sk__ __vector__ void add_replace_fp16_same_params_sk(
     const AddReplaceArgs *args, sk::SkSystemArgs *sys_args)
 {
-    add_replace_body(args->x1, args->x2, args->y, sys_args->SkGetBlockIdx());
+    add_replace_body<true>(args->x1, args->x2, args->y, sys_args->SkGetBlockIdx());
 }
 
 SK_BIND(add_replace_fp16_same_params, 4,
