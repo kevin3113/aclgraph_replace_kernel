@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.18)
+set(CMAKE_ASC_ARCHITECTURES "dav-2201" CACHE STRING "NPU architecture")
+find_package(ASC REQUIRED)
+project(add_replace_minimal LANGUAGES ASC CXX)
+set_source_files_properties(add_replace.cpp PROPERTIES LANGUAGE ASC)
+add_library(add_replace SHARED add_replace.cpp)
+target_compile_options(add_replace PRIVATE $<$<COMPILE_LANGUAGE:ASC>:--npu-arch=dav-2201>)
+target_link_libraries(add_replace PRIVATE ascendcl)
