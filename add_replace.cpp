@@ -27,6 +27,7 @@ __aicore__ inline void add_replace_body(GM_ADDR x1, GM_ADDR x2, GM_ADDR y, uint3
     a = q1.DeQue<half>(); b = q2.DeQue<half>(); auto o = qo.AllocTensor<half>();
     AscendC::Add(o, a, b, n); qo.EnQue(o); q1.FreeTensor(a); q2.FreeTensor(b);
     o = qo.DeQue<half>(); AscendC::DataCopy(go, o, n); qo.FreeTensor(o);
+    p.DestroyWithoutPipeAll();
 }
 
 extern "C" __global__ __vector__ __aicore__ void add_replace_fp16_same_params(
@@ -35,13 +36,16 @@ extern "C" __global__ __vector__ __aicore__ void add_replace_fp16_same_params(
     add_replace_body(x1, x2, y, AscendC::GetBlockIdx());
 }
 
+template <uint32_t split_num>
 __sk__ __vector__ void add_replace_fp16_same_params_sk(
     const AddReplaceArgs *args, sk::SkSystemArgs *sys_args)
 {
     add_replace_body(args->x1, args->x2, args->y, sys_args->SkGetBlockIdx());
 }
 
-SK_BIND(add_replace_fp16_same_params, 4, add_replace_fp16_same_params_sk);
+SK_BIND(add_replace_fp16_same_params, 4,
+        add_replace_fp16_same_params_sk<0>, add_replace_fp16_same_params_sk<1>,
+        add_replace_fp16_same_params_sk<2>, add_replace_fp16_same_params_sk<3>);
 namespace {
 constexpr size_t kBytes = 3 * sizeof(void *);
 thread_local int gLastError = ACL_SUCCESS;
